@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <util/box.h>
 
 struct aaa {
 	unsigned int key;
@@ -30,7 +31,7 @@ struct input_events {
 
 struct input;
 
-struct input *input_setup(char *kdevpath, char *pdevpath, struct input_events input_events);
+struct input *input_setup(char *kdevpath, char *pdevpath, struct box pointer_bounds, struct input_events input_events);
 int input_get_key_fd(struct input *S);
 int input_get_poi_fd_n(struct input *S);
 int input_get_poi_fd(struct input *S, int i);

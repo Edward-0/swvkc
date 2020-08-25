@@ -2,6 +2,7 @@
 #include <backend/input.h>
 #include <backend/dev.h>
 #include <util/log.h>
+#include <util/box.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -24,6 +25,7 @@ struct input {
 	int n_pointer_fds;
 	int keymap_fd;
 	unsigned int keymap_size;
+	struct box pointer_bounds;
 
 	struct xkb_context *context;
 	struct xkb_keymap *keymap;
@@ -83,7 +85,7 @@ int create_file(off_t size) {
 	return fd;
 }
 
-struct input *input_setup(char *kdevpath, char *pdevpath, struct input_events input_events) {
+struct input *input_setup(char *kdevpath, char *pdevpath, struct box pointer_bounds, struct input_events input_events) {
 	printf("├─ INPUT (Linux Input Subsystem)\n");
 	int count, n;
 	struct key_dev *key_devs;
@@ -109,6 +111,8 @@ struct input *input_setup(char *kdevpath, char *pdevpath, struct input_events in
 	boxlog("Keyboard device node: %s", key_devs[n].devnode);
 
 	struct input *S = calloc(1, sizeof(struct input));
+
+	S->pointer_bounds = pointer_bounds;
 
 	struct key_dev *key_devs_;
 	if (pdevpath) {
@@ -253,7 +257,8 @@ int touchpad_ev_handler(int fd, uint32_t mask, void *data) {
 		return 0;
 	} else if (ev.type == EV_ABS && ev.code == ABS_X) {
 		if (motion_x) {
-			pointer.x = MAX(0, pointer.x + (ev.value - abs_x)/2);
+			pointer.x = MAX(S->pointer_bounds.x, MIN(S->pointer_bounds.x + S->pointer_bounds.width, 
+				pointer.x + (ev.value - abs_x)/2));
 			S->input_events.motion(0, S->input_events.user_data);
 		} else
 			motion_x = true;
@@ -261,7 +266,8 @@ int touchpad_ev_handler(int fd, uint32_t mask, void *data) {
 		return 0;
 	} else if (ev.type == EV_ABS && ev.code == ABS_Y) {
 		if (motion_y) {
-			pointer.y = MAX(0, pointer.y + (ev.value - abs_y)/2);
+			pointer.y = MAX(S->pointer_bounds.y, MIN(S->pointer_bounds.y + S->pointer_bounds.height, 
+				pointer.y + (ev.value - abs_y)/2));
 			S->input_events.motion(0, S->input_events.user_data);
 		} else
 			motion_y = true;
@@ -275,11 +281,11 @@ int touchpad_ev_handler(int fd, uint32_t mask, void *data) {
 		 S->input_events.user_data);
 		return 0;
 	} else if (ev.type == EV_REL && ev.code == REL_X) {
-		pointer.x = MAX(0, pointer.x + ev.value);
+		pointer.x = MAX(S->pointer_bounds.x, MIN(S->pointer_bounds.x + S->pointer_bounds.width, pointer.x + ev.value));
 		S->input_events.motion(0, S->input_events.user_data);
 		return 0;
 	} else if (ev.type == EV_REL && ev.code == REL_Y) {
-		pointer.y = MAX(0, pointer.y + ev.value);
+		pointer.y = MAX(S->pointer_bounds.y, MIN(S->pointer_bounds.y + S->pointer_bounds.height, pointer.y + ev.value));
 		S->input_events.motion(0, S->input_events.user_data);
 		return 0;
 	} else

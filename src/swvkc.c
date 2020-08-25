@@ -130,6 +130,8 @@ int swvkc_initialize(char *kdevpath, char *pdevpath) {
 		errlog("Could not setup screen");
 		return EXIT_FAILURE;
 	}
+
+	struct box screen_size = screen_get_dimensions(server->screen);
 /*
  * Fast computers could be affected by the 'stuck enter key' bug
  * (due to EVIOCGRAB inside input_setup)
@@ -142,7 +144,7 @@ int swvkc_initialize(char *kdevpath, char *pdevpath) {
 		.button = input_button_notify,
 		.user_data = server
 	};
-	server->input = input_setup(kdevpath, pdevpath, input_events);
+	server->input = input_setup(kdevpath, pdevpath, screen_size, input_events);
 	if (!server->input) {
 		errlog("Could not setup input");
 		return EXIT_FAILURE;
